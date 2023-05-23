@@ -124,4 +124,41 @@ public interface RSGroupInfoManager {
    */
   void updateRSGroupConfig(String groupName, Map<String, String> configuration) throws IOException;
 
+  /**
+   * Set group of namespaces.
+   * @param namespaces
+   * @param groupName
+   * @throws IOException
+   */
+  void addNamespace(String namespace, String groupName) throws IOException;
+
+  /**
+   * Determine {@code RSGroupInfo} for the given namespace.
+   * @param namespace
+   * @return rsgroup name
+   */
+  String determineRSGroupInfoForNamespace(String namespace);
+
+  /**
+   * Get {@code RSGroupInfo} for the given namespace.
+   * @param namespace
+   * @return
+   * @throws IOException
+   */
+  RSGroupInfo getRSGroupOfNamespace(String namespace) throws IOException;
+
+  /**
+   *  Move namespaces to rsgroup.
+   * @param namespaces
+   * @param targetGroupName
+   * @throws IOException
+   */
+  void moveNamespace(String namespace, String targetGroupName) throws IOException;
+
+  /**
+   * Remove namespaces from rsgroup.
+   * @param namespaces
+   * @throws IOException
+   */
+  void removeNamespace(String namespace)  throws IOException;
 }

@@ -3470,6 +3470,10 @@ public final class ProtobufUtil {
 
     proto.getConfigurationList()
       .forEach(pair -> rsGroupInfo.setConfiguration(pair.getName(), pair.getValue()));
+
+    Collection<String> namespaces = proto.getNamespacesList().parallelStream().
+      collect(Collectors.toList());
+    rsGroupInfo.addAllNamespaces(namespaces);
     return rsGroupInfo;
   }
 
@@ -3490,7 +3494,8 @@ public final class ProtobufUtil {
             .setName(entry.getKey()).setValue(entry.getValue()).build())
           .collect(Collectors.toList());
     return RSGroupProtos.RSGroupInfo.newBuilder().setName(pojo.getName()).addAllServers(hostports)
-      .addAllTables(tables).addAllConfiguration(configuration).build();
+      .addAllTables(tables).addAllConfiguration(configuration)
+      .addAllNamespaces(pojo.getNamespaces()).build();
   }
 
   public static CheckAndMutate toCheckAndMutate(ClientProtos.Condition condition,

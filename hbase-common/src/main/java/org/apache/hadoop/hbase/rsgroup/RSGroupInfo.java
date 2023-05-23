@@ -52,14 +52,17 @@ public class RSGroupInfo {
 
   private final Map<String, String> configuration;
 
+  private final SortedSet<String> namespaces;
+
   public RSGroupInfo(String name) {
-    this(name, new TreeSet<Address>(), new TreeSet<TableName>());
+    this(name, new TreeSet<Address>(), new TreeSet<TableName>(), new TreeSet<String>());
   }
 
   RSGroupInfo(String name, Set<Address> servers) {
     this.name = name;
     this.servers = servers == null ? new TreeSet<>() : new TreeSet<>(servers);
     this.tables = new TreeSet<>();
+    this.namespaces = new TreeSet<>();
     configuration = new HashMap<>();
   }
 
@@ -73,9 +76,18 @@ public class RSGroupInfo {
     this.name = name;
     this.servers = (servers == null) ? new TreeSet<>() : new TreeSet<>(servers);
     this.tables = (tables == null) ? new TreeSet<>() : new TreeSet<>(tables);
+    this.namespaces = new TreeSet<>();
     configuration = new HashMap<>();
   }
 
+  @Deprecated
+  RSGroupInfo(String name, Set<Address> servers, Set<TableName> tables, Set<String> namespaces) {
+    this.name = name;
+    this.servers = (servers == null) ? new TreeSet<>() : new TreeSet<>(servers);
+    this.tables = (tables == null) ? new TreeSet<>() : new TreeSet<>(tables);
+    this.namespaces = (namespaces == null) ? new TreeSet<>() : new TreeSet<>(namespaces);
+    configuration = new HashMap<>();
+  }
   public RSGroupInfo(RSGroupInfo src) {
     this(src.name, src.servers, src.tables);
   }
@@ -180,6 +192,44 @@ public class RSGroupInfo {
     return tables.remove(table);
   }
 
+  public SortedSet<String> getNamespaces() {
+    return namespaces;
+  }
+
+  /**
+   * Add a namespace.
+   * @param namespace
+   */
+  public void addNamespace(String namespace) {
+    this.namespaces.add(namespace);
+  }
+
+  /**
+   * Add a collection of namespaces.
+   * @param namespaces
+   */
+  public void addAllNamespaces(Collection<String> namespaces) {
+    this.namespaces.addAll(namespaces);
+  }
+
+  /**
+   * Check if the group contains a namespace.
+   * @param namespace
+   * @return
+   */
+  public boolean containsNamespace(String namespace) {
+    return  this.namespaces.contains(namespace);
+  }
+
+  /**
+   * Remove a namespace.
+   * @param namespace
+   * @return
+   */
+  public boolean removeNamespace(String namespace) {
+    return  this.namespaces.remove(namespace);
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
@@ -192,6 +242,8 @@ public class RSGroupInfo {
     sb.append(" Tables:");
     sb.append(this.tables);
     sb.append(", ");
+    sb.append(" Namespaces:");
+    sb.append(this.namespaces);
     sb.append(" Configurations:");
     sb.append(this.configuration);
     return sb.toString();
@@ -216,6 +268,9 @@ public class RSGroupInfo {
     if (!tables.equals(rsGroupInfo.tables)) {
       return false;
     }
+    if (!namespaces.equals(rsGroupInfo.namespaces)) {
+      return false;
+    }
     if (!configuration.equals(rsGroupInfo.configuration)) {
       return false;
     }
@@ -226,6 +281,7 @@ public class RSGroupInfo {
   public int hashCode() {
     int result = servers.hashCode();
     result = 31 * result + tables.hashCode();
+    result = 31 * result + namespaces.hashCode();
     result = 31 * result + name.hashCode();
     result = 31 * result + configuration.hashCode();
     return result;

@@ -173,6 +173,9 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     final ImmutableMap<String, RSGroupInfo> groupName2Group;
     final ImmutableMap<TableName, RSGroupInfo> tableName2Group;
 
+    final ImmutableMap<String, RSGroupInfo> namespace2Group;
+
+
     RSGroupInfoHolder() {
       this(Collections.emptyMap());
     }
@@ -180,15 +183,19 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     RSGroupInfoHolder(Map<String, RSGroupInfo> rsGroupMap) {
       ImmutableMap.Builder<String, RSGroupInfo> group2Name2GroupBuilder = ImmutableMap.builder();
       ImmutableMap.Builder<TableName, RSGroupInfo> tableName2GroupBuilder = ImmutableMap.builder();
+      ImmutableMap.Builder<String, RSGroupInfo> namespace2GroupBuilder = ImmutableMap.builder();
       rsGroupMap.forEach((groupName, rsGroupInfo) -> {
         group2Name2GroupBuilder.put(groupName, rsGroupInfo);
         if (!groupName.equals(RSGroupInfo.DEFAULT_GROUP)) {
           rsGroupInfo.getTables()
             .forEach(tableName -> tableName2GroupBuilder.put(tableName, rsGroupInfo));
+          rsGroupInfo.getNamespaces()
+            .forEach(namespace -> namespace2GroupBuilder.put(namespace, rsGroupInfo));
         }
       });
       this.groupName2Group = group2Name2GroupBuilder.build();
       this.tableName2Group = tableName2GroupBuilder.build();
+      this.namespace2Group = namespace2GroupBuilder.build();
     }
   }
 
@@ -1363,5 +1370,90 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     rsGroupInfo.getConfiguration().forEach((k, v) -> rsGroupInfo.removeConfiguration(k));
     configuration.forEach((k, v) -> rsGroupInfo.setConfiguration(k, v));
     flushConfig();
+  }
+
+  @Override public void addNamespace(String namespace, String groupName) throws IOException {
+    Map<String, RSGroupInfo> rsGroupInfos = new HashMap<String, RSGroupInfo>();
+    RSGroupInfo rsGroupInfo = getRSGroupOfNamespace(namespace);
+    if (rsGroupInfo != null) {
+      if (rsGroupInfo.getName().equals(groupName)) {
+        throw new ConstraintException("Namespace " + namespace + " already exists in the rsgroup");
+      } else {
+        throw new ConstraintException(
+          "Namespace " + namespace + " already exists in rsgroup " + rsGroupInfo.getName() + ". ");
+      }
+    } else {
+      rsGroupInfo = getRSGroup(groupName);
+      if (rsGroupInfo == null) {
+        throw new ConstraintException("Group " + namespace + " doesn't exists");
+      } else {
+        if (rsGroupInfos.containsKey(groupName)) {
+          RSGroupInfo rs = rsGroupInfos.get(groupName);
+          rs.addNamespace(namespace);
+        } else {
+          rsGroupInfo.addNamespace(namespace);
+          rsGroupInfos.put(groupName, rsGroupInfo);
+        }
+      }
+    }
+    if (rsGroupInfos.size() > 0) {
+      Map<String, RSGroupInfo> newGroupMap = Maps.newHashMap(holder.groupName2Group);
+      newGroupMap.putAll(rsGroupInfos);
+      flushConfig(newGroupMap);
+    }
+    // TODO: move all the tables and regions to new servers.
+    //  Would be better to support single name space moving.
+    LOG.info("Moved names spaces to " + namespaces + " to RSGroup " + groupName);
+    // TODO: Need to implement logic to add namespaces and flushing the RS group info to meta.
+  }
+
+  @Override public String determineRSGroupInfoForNamespace(String namespace) {
+    // TODO: Need to implement logic to determine the RS group of namespace.
+    return null;
+  }
+
+  @Override public RSGroupInfo getRSGroupOfNamespace(String namespace) throws IOException {
+    return holder.namespace2Group.get(namespace);
+  }
+
+  @Override public void moveNamespace(String namespace, String targetGroupName)
+    throws IOException {
+    Map<String, RSGroupInfo> rsGroupInfos = new HashMap<String, RSGroupInfo>();
+    RSGroupInfo rsGroupInfo = getRSGroupOfNamespace(namespace);
+    if (rsGroupInfo == null || rsGroupInfo != null && rsGroupInfo.equals(RSGroupInfo.DEFAULT_GROUP)) {
+      throw new ConstraintException("Namespace  " + namespace + " doesn't exists any rsgroups");
+    } else {
+      rsGroupInfo.removeNamespace(namespace);
+      RSGroupInfo target = getRSGroup(targetGroupName);
+      target.addNamespace(namespace);
+      Map<String, RSGroupInfo> newGroupMap = Maps.newHashMap(holder.groupName2Group);
+      newGroupMap.put(rsGroupInfo.getName(), rsGroupInfo);
+      newGroupMap.put(targetGroupName, target);
+      flushConfig(newGroupMap);
+    }
+    LOG.info("Moved namespace " + namespace + " from RSGroup " +
+      rsGroupInfo.getName() + " to " + targetGroupName);
+    // TODO need to implement logic to move the namespaces from one RS group to another RS group.
+  }
+
+  @Override
+  public void removeNamespace(String namespace) throws IOException {
+    // TODO: utilize the move namespace command to move the namespace to default RS group.
+    Map<String, RSGroupInfo> rsGroupInfos = new HashMap<String, RSGroupInfo>();
+    RSGroupInfo rsGroupInfo = getRSGroupOfNamespace(namespace);
+    if (rsGroupInfo == null || rsGroupInfo != null && rsGroupInfo.equals(RSGroupInfo.DEFAULT_GROUP)) {
+      throw new ConstraintException("Namespace  " + namespace + " doesn't exists any rsgroups");
+    } else {
+      rsGroupInfo.removeNamespace(namespace);
+      RSGroupInfo defaultRSGroup = getRSGroup(RSGroupInfo.DEFAULT_GROUP);
+      defaultRSGroup.addNamespace(namespace);
+      Map<String, RSGroupInfo> newGroupMap = Maps.newHashMap(holder.groupName2Group);
+      newGroupMap.put(rsGroupInfo.getName(), rsGroupInfo);
+      newGroupMap.put(RSGroupInfo.DEFAULT_GROUP, defaultRSGroup);
+      flushConfig(newGroupMap);
+    }
+    LOG.info("Moved namespace " + namespace + " from RSGroup " +
+      rsGroupInfo.getName() + " to " + RSGroupInfo.DEFAULT_GROUP);
+    // TODO: move tables from the namespace to default RS group.
   }
 }

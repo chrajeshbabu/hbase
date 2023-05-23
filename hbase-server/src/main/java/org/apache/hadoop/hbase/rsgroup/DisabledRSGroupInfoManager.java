@@ -134,4 +134,25 @@ class DisabledRSGroupInfoManager implements RSGroupInfoManager {
     throws IOException {
     throw new DoNotRetryIOException("RSGroup is disabled");
   }
+
+  @Override public void addNamespace(String namespace, String groupName) throws IOException {
+
+  }
+
+  @Override public String determineRSGroupInfoForNamespace(String namespace) {
+    return RSGroupInfo.DEFAULT_GROUP;
+  }
+
+  @Override public RSGroupInfo getRSGroupOfNamespace(String namespace) throws IOException {
+    return null;
+  }
+
+  @Override public void moveNamespace(String namespace, String targetGroupName)
+    throws IOException {
+
+  }
+
+  @Override public void removeNamespace(String namespace) throws IOException {
+
+  }
 }

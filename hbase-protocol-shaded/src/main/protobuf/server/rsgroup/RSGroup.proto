@@ -31,4 +31,5 @@ message RSGroupInfo {
   repeated ServerName servers = 4;
   repeated TableName tables = 3;
   repeated NameStringPair configuration = 5;
+  repeated string namespaces = 6;
 }
