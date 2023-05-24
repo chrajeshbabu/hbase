@@ -1358,6 +1358,24 @@ public interface MasterObserver {
   }
 
   /**
+   * Called after listing all namespaces in the region server group.
+   * @param ctx       the environment to interact with the framework and master
+   * @param groupName name of the region server group
+   */
+  default void postListNamespacesInRSGroup(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+    final String groupName) throws IOException {
+  }
+
+  /**
+   * Called before listing all namespaces in the region server group.
+   * @param ctx       the environment to interact with the framework and master
+   * @param groupName name of the region server group
+   */
+  default void preListNamespacesInRSGroup(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+    final String groupName) throws IOException {
+  }
+
+  /**
    * Called after listing all tables in the region server group.
    * @param ctx       the environment to interact with the framework and master
    * @param groupName name of the region server group
@@ -1365,7 +1383,6 @@ public interface MasterObserver {
   default void postListTablesInRSGroup(final ObserverContext<MasterCoprocessorEnvironment> ctx,
     final String groupName) throws IOException {
   }
-
   /**
    * Called before rename rsgroup.
    * @param ctx     the environment to interact with the framework and master

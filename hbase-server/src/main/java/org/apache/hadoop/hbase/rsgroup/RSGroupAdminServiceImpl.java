@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.procedure.ProcedureSyncWait;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.procedure2.Procedure;
+import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -423,6 +424,68 @@ class RSGroupAdminServiceImpl extends RSGroupAdminProtos.RSGroupAdminService {
       if (master.getMasterCoprocessorHost() != null) {
         master.getMasterCoprocessorHost().postRenameRSGroup(oldRSGroup, newRSGroup);
       }
+    } catch (IOException e) {
+      CoprocessorRpcUtils.setControllerException(controller, e);
+    }
+    done.run(builder.build());
+  }
+
+  @Override public void listNamespacesInRSGroup(RpcController controller,
+    RSGroupAdminProtos.ListNamespacesInRSGroupRequest request,
+    RpcCallback<RSGroupAdminProtos.ListNamespacesInRSGroupResponse> done) {
+    RSGroupAdminProtos.ListNamespacesInRSGroupResponse.Builder builder =
+      RSGroupAdminProtos.ListNamespacesInRSGroupResponse.newBuilder();
+    String groupName = request.getRSGroupName();
+    LOG.info(master.getClientIdAuditPrefix() + " list namespaces in rsgroup " + groupName);
+    try {
+      if (master.getMasterCoprocessorHost() != null) {
+        master.getMasterCoprocessorHost().preListNamespacesInRSGroup(groupName);
+      }
+       builder.addAllNamespace(rsGroupInfoManager.getRSGroup(groupName).getNamespaces());
+      if (master.getMasterCoprocessorHost() != null) {
+        master.getMasterCoprocessorHost().postListNamespacesInRSGroup(groupName);
+      }
+    } catch (IOException e) {
+      CoprocessorRpcUtils.setControllerException(controller, e);
+    }
+    done.run(builder.build());
+  }
+
+  @Override public void moveNamespace(RpcController controller,
+    RSGroupAdminProtos.MoveNamespaceRequest request,
+    RpcCallback<RSGroupAdminProtos.MoveNamespaceResponse> done) {
+    RSGroupAdminProtos.MoveNamespaceResponse.Builder builder =
+      RSGroupAdminProtos.MoveNamespaceResponse.newBuilder();
+    try {
+      // TODO add validations and coprocesor hooks.
+      rsGroupInfoManager.moveNamespace(request.getNamespace(), request.getTargetGroup());
+    } catch (IOException e) {
+      CoprocessorRpcUtils.setControllerException(controller, e);
+    }
+    done.run(builder.build());
+  }
+
+  @Override public void getRSGroupInfoOfNamespace(RpcController controller,
+    RSGroupAdminProtos.GetRSGroupInfoOfNamespaceRequest request,
+    RpcCallback<RSGroupAdminProtos.GetRSGroupInfoOfNamespaceResponse> done) {
+    RSGroupAdminProtos.GetRSGroupInfoOfNamespaceResponse.Builder builder =
+      RSGroupAdminProtos.GetRSGroupInfoOfNamespaceResponse.newBuilder();
+    try {
+      // TODO add validations and coprocessor hooks.
+      builder.setRSGroupInfo(ProtobufUtil.toProtoGroupInfo(
+        rsGroupInfoManager.getRSGroupOfNamespace(request.getNamespace())));
+    } catch (IOException e) {
+      CoprocessorRpcUtils.setControllerException(controller, e);
+    }
+  }
+
+  @Override public void removeNamespace(RpcController controller,
+    RSGroupAdminProtos.RemoveNamespaceRequest request,
+    RpcCallback<RSGroupAdminProtos.RemoveNamespaceResponse> done) {
+    RSGroupAdminProtos.RemoveNamespaceResponse.Builder builder =
+      RSGroupAdminProtos.RemoveNamespaceResponse.newBuilder();
+    try {
+      rsGroupInfoManager.removeNamespace(request.getNamespace());
     } catch (IOException e) {
       CoprocessorRpcUtils.setControllerException(controller, e);
     }

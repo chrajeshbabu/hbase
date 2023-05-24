@@ -159,6 +159,37 @@ message UpdateRSGroupConfigRequest {
 message UpdateRSGroupConfigResponse {
 }
 
+message ListNamespacesInRSGroupRequest {
+  required string r_s_group_name = 1;
+}
+
+message ListNamespacesInRSGroupResponse {
+  repeated string namespace = 1;
+}
+
+message GetRSGroupInfoOfNamespaceRequest {
+  required string namespace = 1;
+}
+
+message GetRSGroupInfoOfNamespaceResponse {
+  optional RSGroupInfo r_s_group_info = 1;
+}
+
+message MoveNamespaceRequest {
+  required string target_group = 1;
+  required string namespace = 2;
+}
+
+message MoveNamespaceResponse {
+}
+
+message RemoveNamespaceRequest {
+  required string namespace = 1;
+}
+
+message RemoveNamespaceResponse {
+}
+
 service RSGroupAdminService {
   rpc GetRSGroupInfo(GetRSGroupInfoRequest)
     returns (GetRSGroupInfoResponse);
@@ -195,4 +226,16 @@ service RSGroupAdminService {
 
   rpc RenameRSGroup(RenameRSGroupRequest)
     returns (RenameRSGroupResponse);
+
+  rpc ListNamespacesInRSGroup(ListNamespacesInRSGroupRequest)
+    returns (ListNamespacesInRSGroupResponse);
+
+  rpc MoveNamespace(MoveNamespaceRequest)
+    returns (MoveNamespaceResponse);
+
+  rpc GetRSGroupInfoOfNamespace(GetRSGroupInfoOfNamespaceRequest)
+    returns (GetRSGroupInfoOfNamespaceResponse);
+
+  rpc RemoveNamespace(RemoveNamespaceRequest)
+    returns (RemoveNamespaceResponse);
 }

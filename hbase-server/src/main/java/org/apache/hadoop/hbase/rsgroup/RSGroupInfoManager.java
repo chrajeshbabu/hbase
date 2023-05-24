@@ -149,7 +149,7 @@ public interface RSGroupInfoManager {
 
   /**
    *  Move namespaces to rsgroup.
-   * @param namespaces
+   * @param namespace
    * @param targetGroupName
    * @throws IOException
    */
@@ -157,7 +157,7 @@ public interface RSGroupInfoManager {
 
   /**
    * Remove namespaces from rsgroup.
-   * @param namespaces
+   * @param namespace
    * @throws IOException
    */
   void removeNamespace(String namespace)  throws IOException;

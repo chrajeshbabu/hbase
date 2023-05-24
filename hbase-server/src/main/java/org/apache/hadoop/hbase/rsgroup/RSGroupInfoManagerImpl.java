@@ -1403,7 +1403,7 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     }
     // TODO: move all the tables and regions to new servers.
     //  Would be better to support single name space moving.
-    LOG.info("Moved names spaces to " + namespaces + " to RSGroup " + groupName);
+    LOG.info("Moved names spaces to " + namespace + " to RSGroup " + groupName);
     // TODO: Need to implement logic to add namespaces and flushing the RS group info to meta.
   }
 
