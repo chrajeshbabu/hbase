@@ -103,6 +103,10 @@ public final class RSGroupUtil {
     if (groupInfo != null) {
       return Optional.of(groupInfo);
     }
+    groupInfo = manager.getRSGroupOfNamespace(tableName.getNamespaceAsString());
+    if (groupInfo != null) {
+      return Optional.of(groupInfo);
+    }
     // Finally, we will try to fall back to namespace as rsgroup if exists
     ClusterSchema clusterSchema = master.getClusterSchema();
     if (clusterSchema == null) {

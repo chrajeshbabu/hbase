@@ -1433,6 +1433,7 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     }
     LOG.info("Moved namespace " + namespace + " from RSGroup " +
       rsGroupInfo.getName() + " to " + targetGroupName);
+
     // TODO need to implement logic to move the namespaces from one RS group to another RS group.
   }
 
