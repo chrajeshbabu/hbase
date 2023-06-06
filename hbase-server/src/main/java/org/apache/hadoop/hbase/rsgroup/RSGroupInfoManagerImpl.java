@@ -968,6 +968,15 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     return regions;
   }
 
+  private List<RegionInfo> getRegionsOfNamespace(final String namespace) throws IOException {
+    // TODO: remove the regions of tables present in other groups.
+    LinkedList<RegionInfo> regions = new LinkedList<>();
+    for (TableName tableName : masterServices.listTableNamesByNamespace(namespace)) {
+      regions.addAll(masterServices.getAssignmentManager().getTableRegions(tableName, false));
+    }
+    return regions;
+  }
+
   private void addRegion(final LinkedList<RegionInfo> regions, RegionInfo hri) {
     // If meta, move it last otherwise other unassigns fail because meta is not
     // online for them to update state in. This is dodgy. Needs to be made more
@@ -1055,6 +1064,76 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
       waitForRegionMovement(assignmentFutures, failedRegions, sourceGroupName, retry);
       if (failedRegions.isEmpty()) {
         LOG.info("All regions from {} are moved back to {}", movedServerNames, sourceGroupName);
+        return;
+      } else {
+        try {
+          wait(1000);
+        } catch (InterruptedException e) {
+          LOG.warn("Sleep interrupted", e);
+          Thread.currentThread().interrupt();
+        }
+        retry++;
+      }
+    } while (
+      !failedRegions.isEmpty() && retry <= masterServices.getConfiguration()
+        .getInt(FAILED_MOVE_MAX_RETRY, DEFAULT_MAX_RETRY_VALUE)
+    );
+
+    // has up to max retry time or there are no more regions to move
+    if (!failedRegions.isEmpty()) {
+      // print failed moved regions, for later process conveniently
+      String msg = String.format("move regions for group %s failed, failed regions: %s",
+        sourceGroupName, failedRegions);
+      LOG.error(msg);
+      throw new DoNotRetryIOException(
+        msg + ", just record the last failed region's cause, more details in server log", toThrow);
+    }
+  }
+
+
+  private <T> void moveNamespaceToGroup(String namespace, List<RegionInfo> namespaceRegions,
+    Set<Address> newRegionsOwners, String sourceGroupName, String targetGroupName) throws IOException {
+    // Get server names corresponding to given Addresses
+    List<ServerName> srcGrpServerNames = new ArrayList<>(newRegionsOwners.size());
+    for (ServerName serverName : masterServices.getServerManager().getOnlineServers().keySet()) {
+      // In case region move failed in previous attempt, regionsOwners and newRegionsOwners
+      // can have the same servers. So for all servers below both conditions to be checked
+      if (newRegionsOwners.contains(serverName.getAddress())) {
+        srcGrpServerNames.add(serverName);
+      }
+    }
+    List<Pair<RegionInfo, Future<byte[]>>> assignmentFutures = new ArrayList<>();
+    int retry = 0;
+    Set<String> failedRegions = new HashSet<>();
+    IOException toThrow = null;
+    do {
+      assignmentFutures.clear();
+      failedRegions.clear();
+      for (RegionInfo region : namespaceRegions) {
+        LOG.info("Moving region {}, which does not belong to RSGroup {}",
+          region.getShortNameToLog(), targetGroupName);
+        // Move region back to source RSGroup servers
+        ServerName dest =
+          masterServices.getLoadBalancer().randomAssignment(region, srcGrpServerNames);
+        if (dest == null) {
+          failedRegions.add(region.getRegionNameAsString());
+          continue;
+        }
+        RegionPlan rp = new RegionPlan(region, masterServices.getAssignmentManager().getRegionStates()
+          .getRegionServerOfRegion(region), dest);
+        try {
+          Future<byte[]> future = masterServices.getAssignmentManager().moveAsync(rp);
+          assignmentFutures.add(Pair.newPair(region, future));
+        } catch (IOException ioe) {
+          failedRegions.add(region.getRegionNameAsString());
+          LOG.debug("Move region {} failed, will retry, current retry time is {}",
+            region.getShortNameToLog(), retry, ioe);
+          toThrow = ioe;
+        }
+      }
+      waitForRegionMovement(assignmentFutures, failedRegions, sourceGroupName, retry);
+      if (failedRegions.isEmpty()) {
+        LOG.info("All regions of {} are moved to {}", namespace, targetGroupName);
         return;
       } else {
         try {
@@ -1403,6 +1482,7 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     }
     // TODO: move all the tables and regions to new servers.
     //  Would be better to support single name space moving.
+    // TODO: move tables of namespace present in other groups to new RS group.
     LOG.info("Moved names spaces to " + namespace + " to RSGroup " + groupName);
     // TODO: Need to implement logic to add namespaces and flushing the RS group info to meta.
   }
@@ -1433,8 +1513,9 @@ final class RSGroupInfoManagerImpl implements RSGroupInfoManager {
     }
     LOG.info("Moved namespace " + namespace + " from RSGroup " +
       rsGroupInfo.getName() + " to " + targetGroupName);
-
     // TODO need to implement logic to move the namespaces from one RS group to another RS group.
+    moveNamespaceToGroup(namespace, getRegionsOfNamespace(namespace),
+      getRSGroup(targetGroupName).getServers(), rsGroupInfo.getName(), targetGroupName);
   }
 
   @Override
